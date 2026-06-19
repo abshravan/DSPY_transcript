@@ -13,8 +13,9 @@ The task is binary: is the **patient** expressing emotional frustration?
 (`yes` / `no`). Only the patient's speech drives the label; the agent's speech
 is context only.
 
-The pipeline targets a **local, OpenAI-compatible LLM** (e.g. *Moss 4B
-Thinking*) served at a URL such as `http://localhost:8000/v1`.
+The pipeline runs against **Azure OpenAI** by default, and also supports hosted
+OpenAI or any **local, OpenAI-compatible LLM** (e.g. *Moss 4B Thinking* served
+at `http://localhost:8000/v1`) via `--provider`.
 
 ---
 
@@ -61,26 +62,67 @@ pip install -r requirements.txt
 
 ---
 
-## Serving the local model
+## Choosing a model provider
+
+The pipeline talks to all providers through DSPy's LiteLLM-backed `dspy.LM`,
+selected with `--provider`:
+
+### Azure OpenAI (default)
+
+Set your resource details via environment variables (or the matching CLI flags):
+
+```bash
+export AZURE_OPENAI_ENDPOINT="https://<your-resource>.openai.azure.com/"
+export AZURE_OPENAI_API_KEY="<your-key>"
+export AZURE_OPENAI_DEPLOYMENT="<your-deployment-name>"   # e.g. gpt-4o
+export AZURE_OPENAI_API_VERSION="2024-10-21"              # optional; this is the default
+```
+
+- `--model` is the Azure **deployment name** (not the base model name).
+- `--api-base` is the resource endpoint (`https://<resource>.openai.azure.com/`).
+- The model id sent to LiteLLM becomes `azure/<deployment>`.
+
+### Local OpenAI-compatible server
 
 Any OpenAI-compatible server works (vLLM, llama.cpp server, LM Studio, Ollama's
 OpenAI shim, etc.). For example, with vLLM:
 
 ```bash
-vllm serve moss-4b-thinking --port 8000
-# -> exposes http://localhost:8000/v1
+vllm serve moss-4b-thinking --port 8000   # -> http://localhost:8000/v1
 ```
 
-The pipeline talks to it through DSPy's LiteLLM-backed `dspy.LM`. Model names
-are prefixed with `openai/` automatically if you don't include a provider.
+Then run with `--provider local`. Model names are prefixed `openai/`
+automatically.
+
+### Hosted OpenAI
+
+`--provider openai` with `--model gpt-4o` and `OPENAI_API_KEY` set.
 
 ---
 
 ## Usage
 
+### Azure OpenAI (default)
+
+```bash
+export AZURE_OPENAI_ENDPOINT="https://<your-resource>.openai.azure.com/"
+export AZURE_OPENAI_API_KEY="<your-key>"
+
+python train_gepa.py \
+    --dataset sample_data.csv \
+    --provider azure \
+    --model <your-deployment-name> \
+    --api-version 2024-10-21 \
+    --train-ratio 0.8 \
+    --max-iters 20
+```
+
+### Local model
+
 ```bash
 python train_gepa.py \
     --dataset sample_data.csv \
+    --provider local \
     --model moss \
     --api-base http://localhost:8000/v1 \
     --train-ratio 0.8 \
@@ -98,13 +140,15 @@ python train_gepa.py --dataset sample_data.csv --skip-optimization
 | Flag | Default | Purpose |
 |------|---------|---------|
 | `--dataset` | (required) | Path to the labeled CSV. |
-| `--model` | `moss` | Model name served by the endpoint. |
-| `--api-base` | `http://localhost:8000/v1` | OpenAI-compatible endpoint for the task model. |
-| `--api-key` | `$OPENAI_API_KEY` or `local-key` | API key (dummy is fine for local). |
+| `--provider` | `azure` | `azure`, `openai`, or `local`. |
+| `--model` | `$AZURE_OPENAI_DEPLOYMENT` or `gpt-4o` | Azure: deployment name. Else: model name. |
+| `--api-base` | `$AZURE_OPENAI_ENDPOINT` | Azure resource endpoint / local server URL. |
+| `--api-key` | `$AZURE_OPENAI_API_KEY` / `$OPENAI_API_KEY` | API key. |
+| `--api-version` | `$AZURE_OPENAI_API_VERSION` or `2024-10-21` | Azure API version. |
 | `--train-ratio` | `0.8` | Train fraction (stratified split). |
 | `--max-iters` | `20` | Max GEPA optimization rounds. |
 | `--metric-calls-per-iter` | `60` | GEPA metric-call budget per round. |
-| `--reflection-model` / `--reflection-api-base` | `--model` / `--api-base` | LM GEPA uses to *propose* new prompts. A stronger model here usually improves results. |
+| `--reflection-model` / `--reflection-api-base` / `--reflection-provider` | `--model` / `--api-base` / `--provider` | LM GEPA uses to *propose* new prompts. A stronger model here usually improves results. |
 | `--min-delta` | `0.01` | Min F1 gain counted as progress. |
 | `--patience` | `3` | Consecutive stalled rounds before early stop. |
 | `--num-threads` | library default | Parallelism for GEPA evaluation. |

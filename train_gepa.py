@@ -416,17 +416,47 @@ def extract_prompt(program: dspy.Module) -> str:
     return "\n\n".join(chunks).strip()
 
 
-def build_lm(model: str, api_base: str, api_key: str, max_tokens: int) -> dspy.LM:
-    """Construct a DSPy LM pointing at an OpenAI-compatible endpoint."""
-    model_id = model if "/" in model else f"openai/{model}"
-    return dspy.LM(
-        model=model_id,
-        api_base=api_base,
+def build_lm(
+    provider: str,
+    model: str,
+    api_base: str,
+    api_key: str,
+    max_tokens: int,
+    api_version: str | None = None,
+) -> dspy.LM:
+    """Construct a DSPy LM for the chosen provider.
+
+    Providers (DSPy routes these through LiteLLM):
+      * "azure"  -> Azure OpenAI. `model` is the *deployment* name; the model id
+        becomes "azure/<deployment>" and `api_base` is the resource endpoint
+        (https://<resource>.openai.azure.com/). `api_version` is required.
+      * "openai" -> hosted OpenAI ("openai/<model>"); `api_base` optional.
+      * "local"  -> any OpenAI-compatible server ("openai/<model>" + api_base).
+    """
+    kwargs: dict[str, Any] = dict(
         api_key=api_key,
         temperature=0.0,
         max_tokens=max_tokens,
         model_type="chat",
     )
+
+    if provider == "azure":
+        if not api_base:
+            raise ValueError(
+                "Azure requires --api-base (e.g. https://<resource>.openai.azure.com/) "
+                "or the AZURE_OPENAI_ENDPOINT env var."
+            )
+        if not api_version:
+            raise ValueError("Azure requires --api-version (e.g. 2024-10-21).")
+        model_id = model if model.startswith("azure/") else f"azure/{model}"
+        kwargs["api_base"] = api_base
+        kwargs["api_version"] = api_version
+    else:  # "openai" or "local"
+        model_id = model if "/" in model else f"openai/{model}"
+        if api_base:
+            kwargs["api_base"] = api_base
+
+    return dspy.LM(model=model_id, **kwargs)
 
 
 def optimize(
@@ -645,17 +675,37 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--train-ratio", type=float, default=0.8, help="Train fraction.")
     p.add_argument("--output-dir", default="artifacts", help="Where to write outputs.")
 
-    # Task model (the local LLM being optimized)
-    p.add_argument("--model", default="moss", help="Model name served by the endpoint.")
+    # Provider
+    p.add_argument(
+        "--provider",
+        default="azure",
+        choices=["azure", "openai", "local"],
+        help="LLM provider. 'azure' = Azure OpenAI, 'local' = OpenAI-compatible "
+        "server (e.g. vLLM), 'openai' = hosted OpenAI.",
+    )
+
+    # Task model (the LLM being optimized)
+    p.add_argument(
+        "--model",
+        default=os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o"),
+        help="For Azure: the deployment name. For openai/local: the model name.",
+    )
     p.add_argument(
         "--api-base",
-        default="http://localhost:8000/v1",
-        help="OpenAI-compatible API base URL for the task model.",
+        default=os.environ.get("AZURE_OPENAI_ENDPOINT", ""),
+        help="API base URL. Azure: https://<resource>.openai.azure.com/ "
+        "(env AZURE_OPENAI_ENDPOINT). Local: http://localhost:8000/v1.",
     )
     p.add_argument(
         "--api-key",
-        default=os.environ.get("OPENAI_API_KEY", "local-key"),
-        help="API key (often a dummy value for local servers).",
+        default=os.environ.get("AZURE_OPENAI_API_KEY")
+        or os.environ.get("OPENAI_API_KEY", "local-key"),
+        help="API key. Reads AZURE_OPENAI_API_KEY / OPENAI_API_KEY by default.",
+    )
+    p.add_argument(
+        "--api-version",
+        default=os.environ.get("AZURE_OPENAI_API_VERSION", "2024-10-21"),
+        help="Azure OpenAI API version (env AZURE_OPENAI_API_VERSION).",
     )
     p.add_argument("--max-tokens", type=int, default=4096, help="Max tokens per call.")
 
@@ -670,6 +720,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--reflection-api-base",
         default=None,
         help="API base for the reflection model (defaults to --api-base).",
+    )
+    p.add_argument(
+        "--reflection-provider",
+        default=None,
+        choices=["azure", "openai", "local"],
+        help="Provider for the reflection model (defaults to --provider).",
     )
     p.add_argument(
         "--reflection-max-tokens",
@@ -735,19 +791,35 @@ def main(argv: list[str] | None = None) -> int:
     set_seeds(args.seed)
     os.makedirs(args.output_dir, exist_ok=True)
 
-    logger.info("Configuration: %s", vars(args))
+    # Log config with the API key redacted.
+    safe_cfg = {k: ("***" if k == "api_key" else v) for k, v in vars(args).items()}
+    logger.info("Configuration: %s", safe_cfg)
 
     # Configure the task LM.
-    task_lm = build_lm(args.model, args.api_base, args.api_key, args.max_tokens)
+    task_lm = build_lm(
+        args.provider,
+        args.model,
+        args.api_base,
+        args.api_key,
+        args.max_tokens,
+        api_version=args.api_version,
+    )
     dspy.configure(lm=task_lm)
-    logger.info("Task model configured: %s @ %s", args.model, args.api_base)
+    logger.info(
+        "Task model configured: provider=%s model=%s @ %s",
+        args.provider,
+        args.model,
+        args.api_base or "(default)",
+    )
 
     # Configure the reflection LM used by GEPA.
     reflection_lm = build_lm(
+        args.reflection_provider or args.provider,
         args.reflection_model or args.model,
         args.reflection_api_base or args.api_base,
         args.api_key,
         args.reflection_max_tokens,
+        api_version=args.api_version,
     )
     # Reflection benefits from sampling diversity.
     reflection_lm.kwargs["temperature"] = 1.0
