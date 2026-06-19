@@ -1,0 +1,16 @@
+# Pipeline outputs
+artifacts/
+gepa_logs_iter*/
+*.png
+prompt_history.json
+best_prompt.txt
+best_program.json
+error_analysis.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/

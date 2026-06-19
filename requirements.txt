@@ -1,0 +1,22 @@
+# Core: DSPy ships the GEPA optimizer used by this pipeline.
+# Pinned to a version range verified against the GEPA API in this code
+# (dspy.GEPA(metric=..., max_metric_calls=..., reflection_lm=...,
+#  track_stats=..., seed=...) and .compile(student, trainset=, valset=)).
+dspy>=3.0.0,<4.0.0
+
+# GEPA's reflective optimizer is provided as a standalone package that DSPy
+# depends on; pinned explicitly so installs are reproducible.
+gepa>=0.0.7
+
+# Metrics (accuracy/precision/recall/f1) and the confusion matrix.
+scikit-learn>=1.3.0
+
+# Plotting the confusion matrix.
+matplotlib>=3.7.0
+
+# Data loading / manipulation.
+pandas>=2.0.0
+numpy>=1.24.0
+
+# OpenAI-compatible client used by DSPy's LM backend (via LiteLLM).
+openai>=1.40.0

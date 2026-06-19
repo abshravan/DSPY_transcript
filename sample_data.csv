@@ -1,0 +1,49 @@
+call_id,transcript,label
+1001,"Caller: Hi, I'm calling to confirm my appointment for next Tuesday.
+Callee: Sure, let me check. Yes, you're booked for 10am Tuesday.
+Caller: Great, thank you so much. See you then.",no
+1002,"Caller: This is the third time I've called about my prescription. Nobody has called me back.
+Callee: I'm sorry about that, let me look into it.
+Caller: I keep being told someone will call and it never happens. This is ridiculous.",yes
+1003,"Caller: Hello, could you tell me what time the clinic opens on Saturdays?
+Callee: We open at 9am on Saturdays.
+Caller: Perfect, appreciate it.",no
+1004,"Caller: I have been on hold for forty minutes. Forty minutes! Are you serious right now?
+Callee: I apologize for the wait.
+Caller: I just need a simple answer and I've wasted my whole morning. Let me speak to a manager.",yes
+1005,"Caller: Hi there, I'd like to reschedule my physical therapy session.
+Callee: No problem, what day works for you?
+Caller: Thursday afternoon would be ideal if possible.",no
+1006,"Caller: I already explained all of this to the last person. Why do I have to repeat myself every single time?
+Callee: I understand, let me pull up your notes.
+Caller: This is exhausting. Every call is the same runaround.",yes
+1007,"Caller: Good morning, I wanted to ask about the results of my blood test.
+Callee: Let me check with the doctor and get back to you.
+Caller: Okay, thank you, I'll wait to hear from you.",no
+1008,"Caller: I was charged twice for the same visit and now you're telling me there's nothing you can do?
+Callee: I'll need to escalate this to billing.
+Caller: This is completely unacceptable. I want this fixed today, not next week.",yes
+1009,"Caller: Hi, can I get directions to the new office location?
+Callee: Of course, we're at 42 Elm Street now.
+Caller: Thanks, that's very helpful.",no
+1010,"Caller: Sorry to bother you, I think I missed a call from the clinic earlier?
+Callee: Let me see. Yes, the nurse tried to reach you about your medication.
+Caller: Oh okay, no worries, could you connect me to them?",no
+1011,"Caller: I've asked four times now to get my records sent over and they still haven't arrived.
+Callee: I'll resend them right away.
+Caller: You said that last week too. I'm losing my patience here.",yes
+1012,"Caller: Hello, I'd like to book a flu shot if you have any slots.
+Callee: We have openings next Monday and Wednesday.
+Caller: Monday is great, let's do that.",no
+1013,"Caller: Why is it so impossible to just get a straight answer from anyone there?
+Callee: I'm sorry, what can I help clarify?
+Caller: Every time I call I get a different story. It's infuriating.",yes
+1014,"Caller: Hi, just checking whether my referral has been processed yet.
+Callee: It's still pending, should be done by Friday.
+Caller: Alright, thanks for letting me know.",no
+1015,"Caller: I'm a bit anxious about my upcoming surgery, could you tell me what to expect?
+Callee: Absolutely, let me walk you through the preparation steps.
+Caller: Thank you, that really helps put my mind at ease.",no
+1016,"Caller: This is absurd. I've been transferred five times and no one can help me.
+Callee: I'm sorry for the runaround.
+Caller: I'm done being polite about this. Fix it now or I'm filing a complaint.",yes
